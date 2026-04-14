@@ -1,9 +1,14 @@
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { OnboardingFlowScreen } from '../src/screens/OnboardingFlowScreen';
+import { OnboardingScreen } from '../src/screens/OnboardingScreen';
 
-export default function IndexRoute() {
+export default function Index() {
   const router = useRouter();
 
-  return <OnboardingFlowScreen onFinish={() => router.replace('/(tabs)')} />;
+  return (
+    <OnboardingScreen
+      onStart={() => router.push('/sign-up')}
+      onSignIn={() => router.push('/sign-in')}
+    />
+  );
 }

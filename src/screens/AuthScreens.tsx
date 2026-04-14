@@ -1,14 +1,53 @@
-import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 import { AppButton, HeaderBlock, InputField, Screen, SurfaceCard } from '../components/Ui';
+import { loginService } from '../services/authService';
 import { palette, spacing } from '../theme';
 
-type AuthProps = {
+type SignInProps = {
+  onSubmit: (token: string) => void;
+  onBack: () => void;
+};
+
+type SignUpProps = {
   onSubmit: () => void;
   onBack: () => void;
 };
 
-export function SignInScreen({ onSubmit, onBack }: AuthProps) {
+export function SignInScreen({ onSubmit, onBack }: SignInProps) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleLogin = async () => {
+    if (!email.trim() || !password.trim()) {
+      Alert.alert('Validación', 'Debes ingresar email y contraseña');
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const result = await loginService({
+        email: email.trim(),
+        password: password.trim(),
+      });
+
+      console.log('Login OK:', result);
+
+      if (!result.accessToken) {
+        throw new Error('La API no devolvió token');
+      }
+
+      onSubmit(result.accessToken);
+    } catch (error: any) {
+      console.error('Error login:', error);
+      Alert.alert('Error', error.message || 'No fue posible iniciar sesión');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <Screen>
       <View style={styles.shell}>
@@ -19,9 +58,31 @@ export function SignInScreen({ onSubmit, onBack }: AuthProps) {
         />
 
         <SurfaceCard>
-          <InputField label="Email" placeholder="hola@fluyo.app" />
-          <InputField label="Contraseña" placeholder="••••••••" />
-          <AppButton label="Ingresar" onPress={onSubmit} />
+          <InputField
+            label="Email"
+            placeholder="hola@fluyo.app"
+            value={email}
+            onChangeText={setEmail}
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="email-address"
+          />
+
+          <InputField
+            label="Contraseña"
+            placeholder="••••••••"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+
+          <AppButton
+            label={loading ? 'Ingresando...' : 'Ingresar'}
+            onPress={handleLogin}
+          />
+
           <AppButton label="Volver" onPress={onBack} variant="secondary" />
         </SurfaceCard>
       </View>
@@ -29,7 +90,11 @@ export function SignInScreen({ onSubmit, onBack }: AuthProps) {
   );
 }
 
-export function SignUpScreen({ onSubmit, onBack }: AuthProps) {
+export function SignUpScreen({ onSubmit, onBack }: SignUpProps) {
+  const [nombre, setNombre] = useState('');
+  const [email, setEmail] = useState('');
+  const [presupuesto, setPresupuesto] = useState('');
+
   return (
     <Screen>
       <View style={styles.shell}>
@@ -40,14 +105,38 @@ export function SignUpScreen({ onSubmit, onBack }: AuthProps) {
         />
 
         <SurfaceCard>
-          <InputField label="Nombre" placeholder="Diego" />
-          <InputField label="Email" placeholder="hola@fluyo.app" />
-          <InputField label="Presupuesto mensual" placeholder="$2,500" />
+          <InputField
+            label="Nombre"
+            placeholder="Diego"
+            value={nombre}
+            onChangeText={setNombre}
+          />
+
+          <InputField
+            label="Email"
+            placeholder="hola@fluyo.app"
+            value={email}
+            onChangeText={setEmail}
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="email-address"
+          />
+
+          <InputField
+            label="Presupuesto mensual"
+            placeholder="$2,500"
+            value={presupuesto}
+            onChangeText={setPresupuesto}
+            keyboardType="numeric"
+          />
+
           <AppButton label="Continuar" onPress={onSubmit} />
           <AppButton label="Volver" onPress={onBack} variant="secondary" />
         </SurfaceCard>
 
-        <Text style={styles.note}>Incluye onboarding simple, foco en ahorro y resumen diario automático.</Text>
+        <Text style={styles.note}>
+          Incluye onboarding simple, foco en ahorro y resumen diario automático.
+        </Text>
       </View>
     </Screen>
   );
