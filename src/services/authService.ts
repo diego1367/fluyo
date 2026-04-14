@@ -1,4 +1,3 @@
-import { API_BASE_URL } from './api';
 import { saveSession } from './storageService';
 
 export type LoginRequest = {
@@ -14,7 +13,7 @@ export type LoginResponse = {
 };
 
 export async function loginService(data: LoginRequest): Promise<LoginResponse> {
-  const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+  const response = await fetch(`http://localhost:5151/api/auth/login`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
