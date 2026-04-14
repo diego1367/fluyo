@@ -1,10 +1,33 @@
-import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import { cards } from '../data/mockData';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { getAssets } from '../services/assetService';
+import { Asset } from '../types/assets';
 import { HeaderBlock, ProgressBar, Screen, SectionHeader, SurfaceCard, uiStyles } from '../components/Ui';
 import { palette, spacing } from '../theme';
 
 export function WalletScreen() {
+  const [assets, setAssets] = useState<Asset[]>([]);
+  const [loadingAssets, setLoadingAssets] = useState(true);
+  const [assetsError, setAssetsError] = useState('');
+
+  useEffect(() => {
+    loadAssets();
+  }, []);
+
+  async function loadAssets() {
+    try {
+      setLoadingAssets(true);
+      setAssetsError('');
+
+      const data = await getAssets();
+      setAssets(data);
+    } catch (error: any) {
+      setAssetsError(error.message || 'No se pudieron cargar los activos');
+    } finally {
+      setLoadingAssets(false);
+    }
+  }
+
   return (
     <Screen>
       <View style={styles.shell}>
@@ -14,13 +37,45 @@ export function WalletScreen() {
           body="Una capa operativa para ver liquidez disponible, próximos débitos y cómo se reparte el dinero hoy."
         />
 
-        {cards.map((item) => (
-          <View key={item.number} style={[styles.card, { backgroundColor: item.accent }]}> 
-            <Text style={styles.cardName}>{item.name}</Text>
-            <Text style={styles.cardNumber}>{item.number}</Text>
-            <Text style={styles.cardBalance}>{item.balance}</Text>
+        <SectionHeader title="Mis activos" />
+
+        <SurfaceCard>
+          <View style={uiStyles.gap16}>
+            {loadingAssets ? (
+              <View style={styles.centerBox}>
+                <ActivityIndicator size="small" color={palette.accent} />
+                <Text style={styles.helperText}>Cargando activos...</Text>
+              </View>
+            ) : assetsError ? (
+              <View style={styles.centerBox}>
+                <Text style={styles.errorText}>{assetsError}</Text>
+              </View>
+            ) : assets.length === 0 ? (
+              <View style={styles.centerBox}>
+                <Text style={styles.helperText}>No tienes activos registrados.</Text>
+              </View>
+            ) : (
+              assets.map((item) => (
+                <View key={item.id} style={styles.assetCard}>
+                  <View style={styles.assetHeader}>
+                    <Text style={styles.assetName}>{item.nombre}</Text>
+                    <Text style={styles.assetValue}>
+                      ${Number(item.valorEstimado || 0).toLocaleString('es-CO')}
+                    </Text>
+                  </View>
+
+                  <Text style={styles.assetCategory}>{item.categoria}</Text>
+
+                  {!!item.fechaCreacion && (
+                    <Text style={styles.assetDate}>
+                      Creado: {new Date(item.fechaCreacion).toLocaleDateString('es-CO')}
+                    </Text>
+                  )}
+                </View>
+              ))
+            )}
           </View>
-        ))}
+        </SurfaceCard>
 
         <SectionHeader title="Liquidity split" />
         <SurfaceCard>
@@ -51,25 +106,53 @@ const styles = StyleSheet.create({
   shell: {
     gap: spacing.xl,
   },
-  card: {
-    borderRadius: 28,
-    padding: spacing.xl,
+  centerBox: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.lg,
     gap: 10,
   },
-  cardName: {
-    color: '#b9d8d2',
+  helperText: {
+    color: palette.inkSoft,
+    fontWeight: '600',
+  },
+  errorText: {
+    color: '#d9534f',
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  assetCard: {
+    borderWidth: 1,
+    borderColor: '#e6e6e6',
+    borderRadius: 18,
+    padding: spacing.lg,
+    gap: 8,
+  },
+  assetHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 12,
+  },
+  assetName: {
+    color: palette.ink,
+    fontSize: 16,
+    fontWeight: '800',
+    flex: 1,
+  },
+  assetValue: {
+    color: palette.accent,
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  assetCategory: {
+    color: palette.inkSoft,
     fontWeight: '700',
   },
-  cardNumber: {
-    color: palette.white,
-    fontSize: 18,
-    fontWeight: '800',
-    letterSpacing: 1.2,
-  },
-  cardBalance: {
-    color: palette.white,
-    fontSize: 34,
-    fontWeight: '900',
+  assetDate: {
+    color: palette.inkSoft,
+    fontSize: 12,
+    fontWeight: '600',
   },
   row: {
     flexDirection: 'row',
