@@ -5,6 +5,7 @@ import { palette } from '../src/theme';
 export default function RootLayout() {
   return (
     <Stack
+      initialRouteName="sign-in"
       screenOptions={{
         contentStyle: { backgroundColor: palette.background },
         animation: 'slide_from_right',

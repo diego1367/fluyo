@@ -1,7 +1,9 @@
-import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import { AppButton, HeaderBlock, InputField, Screen, SurfaceCard } from '../components/Ui';
+import React, { useState } from 'react';
+import { StyleSheet, Text, View, TextInput } from 'react-native';
+import { AppButton, HeaderBlock, Screen, SurfaceCard } from '../components/Ui';
 import { palette, spacing } from '../theme';
+import { login, register } from "../services/api";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 type AuthProps = {
   onSubmit: () => void;
@@ -9,6 +11,21 @@ type AuthProps = {
 };
 
 export function SignInScreen({ onSubmit, onBack }: AuthProps) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  const handleLogin = async () => {
+    try {
+      const result = await login(email, password);
+      const token = result.accessToken;
+      if (!token) throw new Error("No se recibió accessToken");
+      await AsyncStorage.setItem("token", token);
+      onSubmit();
+    } catch (err) {
+      console.error("Error en login:", err);
+    }
+  };
+
   return (
     <Screen>
       <View style={styles.shell}>
@@ -19,9 +36,20 @@ export function SignInScreen({ onSubmit, onBack }: AuthProps) {
         />
 
         <SurfaceCard>
-          <InputField label="Email" placeholder="hola@fluyo.app" />
-          <InputField label="Contraseña" placeholder="••••••••" />
-          <AppButton label="Ingresar" onPress={onSubmit} />
+          <TextInput
+            placeholder="Email"
+            value={email}
+            onChangeText={setEmail}
+            style={styles.input}
+          />
+          <TextInput
+            placeholder="Contraseña"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            style={styles.input}
+          />
+          <AppButton label="Ingresar" onPress={handleLogin} />
           <AppButton label="Volver" onPress={onBack} variant="secondary" />
         </SurfaceCard>
       </View>
@@ -30,6 +58,21 @@ export function SignInScreen({ onSubmit, onBack }: AuthProps) {
 }
 
 export function SignUpScreen({ onSubmit, onBack }: AuthProps) {
+  const [nombre, setNombre] = useState("");
+  const [email, setEmail] = useState("");
+  const [presupuesto, setPresupuesto] = useState("");
+  const [password, setPassword] = useState("");
+
+  const handleRegister = async () => {
+    try {
+      const result = await register(nombre, "ApellidoDemo", email, "3000000000", password);
+      console.log("Usuario registrado:", result);
+      onSubmit();
+    } catch (err) {
+      console.error("Error en registro:", err);
+    }
+  };
+
   return (
     <Screen>
       <View style={styles.shell}>
@@ -38,24 +81,30 @@ export function SignUpScreen({ onSubmit, onBack }: AuthProps) {
           title="Armá tu setup en menos de un minuto"
           body="Definí una cuenta principal, activá tus metas y arrancá con una estructura de control mensual."
         />
-
         <SurfaceCard>
-          <InputField label="Nombre" placeholder="Diego" />
-          <InputField label="Email" placeholder="hola@fluyo.app" />
-          <InputField label="Presupuesto mensual" placeholder="$2,500" />
-          <AppButton label="Continuar" onPress={onSubmit} />
+          <TextInput placeholder="Nombre" value={nombre} onChangeText={setNombre} style={styles.input} />
+          <TextInput placeholder="Email" value={email} onChangeText={setEmail} style={styles.input} />
+          <TextInput placeholder="Presupuesto mensual" value={presupuesto} onChangeText={setPresupuesto} style={styles.input} />
+          <TextInput placeholder="Contraseña" value={password} onChangeText={setPassword} secureTextEntry style={styles.input} />
+          <AppButton label="Continuar" onPress={handleRegister} />
           <AppButton label="Volver" onPress={onBack} variant="secondary" />
         </SurfaceCard>
-
-        <Text style={styles.note}>Incluye onboarding simple, foco en ahorro y resumen diario automático.</Text>
+        <Text style={styles.note}>
+          Incluye onboarding simple, foco en ahorro y resumen diario automático.
+        </Text>
       </View>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  shell: {
-    gap: spacing.xl,
+  shell: { gap: spacing.xl },
+  input: {
+    borderWidth: 1,
+    borderColor: palette.inkSoft,
+    padding: spacing.sm,
+    marginBottom: spacing.md,
+    borderRadius: 6,
   },
   note: {
     color: palette.inkSoft,

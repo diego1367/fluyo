@@ -5,5 +5,9 @@ import { OnboardingFlowScreen } from '../src/screens/OnboardingFlowScreen';
 export default function IndexRoute() {
   const router = useRouter();
 
-  return <OnboardingFlowScreen onFinish={() => router.replace('/(tabs)')} />;
+  return (
+    <OnboardingFlowScreen
+      onFinish={() => router.replace('/sign-in')}
+    />
+  );
 }
