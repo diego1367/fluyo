@@ -13,6 +13,10 @@ export default function HomeRoute() {
         if (screen === 'notifications') router.push('/notifications');
         if (screen === 'goals') router.push('/goals');
         if (screen === 'add-transaction') router.push('/add-transaction');
+        if (screen === 'finance') router.push('/finance');
+        if (screen === 'assets') router.push('/assets');
+        if (screen === 'payables') router.push('/payables');
+        if (screen === 'receivables') router.push('/receivables');
       }}
       onOpenTransaction={(item) => router.push(`/transaction/${item.id}`)}
     />
