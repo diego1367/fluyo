@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  TextInputProps,
   View,
 } from 'react-native';
 import { AppScreen } from '../types/navigation';
@@ -42,6 +43,10 @@ type ButtonProps = {
 type BottomNavProps = {
   currentScreen: AppScreen;
   onNavigate: (screen: AppScreen) => void;
+};
+
+type InputFieldProps = TextInputProps & {
+  label: string;
 };
 
 export function Screen({ children, padded = true }: ScreenProps) {
@@ -87,7 +92,12 @@ export function StatCard({ label, value, helper, invert = false }: StatCardProps
 export function ProgressBar({ value, color = palette.accent }: ProgressProps) {
   return (
     <View style={styles.progressTrack}>
-      <View style={[styles.progressFill, { width: `${Math.min(100, value * 100)}%`, backgroundColor: color }]} />
+      <View
+        style={[
+          styles.progressFill,
+          { width: `${Math.min(100, value * 100)}%`, backgroundColor: color },
+        ]}
+      />
     </View>
   );
 }
@@ -124,11 +134,15 @@ export function Pill({ label, active = false }: { label: string; active?: boolea
   );
 }
 
-export function InputField({ label, placeholder }: { label: string; placeholder: string }) {
+export function InputField({ label, ...props }: InputFieldProps) {
   return (
     <View style={styles.inputWrap}>
       <Text style={styles.inputLabel}>{label}</Text>
-      <TextInput placeholder={placeholder} placeholderTextColor={palette.inkSoft} style={styles.input} />
+      <TextInput
+        placeholderTextColor={palette.inkSoft}
+        style={styles.input}
+        {...props}
+      />
     </View>
   );
 }
@@ -148,7 +162,9 @@ export function BottomNav({ currentScreen, onNavigate }: BottomNavProps) {
         const active = item.screen === currentScreen;
         return (
           <Pressable key={item.screen} onPress={() => onNavigate(item.screen)} style={styles.bottomNavItem}>
-            <Text style={[styles.bottomNavText, active && styles.bottomNavTextActive]}>{item.label}</Text>
+            <Text style={[styles.bottomNavText, active && styles.bottomNavTextActive]}>
+              {item.label}
+            </Text>
           </Pressable>
         );
       })}

@@ -1,53 +1,187 @@
-import React from 'react';
+import React, { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { insights, transactions } from '../data/mockData';
+import { useFocusEffect } from 'expo-router';
+import { transactions } from '../data/mockData';
 import { AppButton, HeaderBlock, HeroCard, Screen, SectionHeader, StatCard, SurfaceCard, uiStyles } from '../components/Ui';
 import { TransactionItem } from '../types/navigation';
 import { palette, spacing } from '../theme';
+import { getAssets } from '../services/assetService';
+import { Asset } from '../types/assets';
+import { getInitialSummary } from '../services/financeService';
+import { getReceivables } from '../services/receivableService';
+import { getPayables } from '../services/payableService';
+import { InitialSummary } from '../types/finance';
+import { Receivable } from '../types/receivables';
+import { Payable } from '../types/payables';
+import { formatCurrency } from '../utils/formatters';
 
 type Props = {
-  onNavigate: (screen: 'wallet' | 'transactions' | 'notifications' | 'goals' | 'add-transaction') => void;
+  onNavigate: (
+    screen:
+      | 'wallet'
+      | 'transactions'
+      | 'notifications'
+      | 'goals'
+      | 'add-transaction'
+      | 'finance'
+      | 'assets'
+      | 'payables'
+      | 'receivables'
+  ) => void;
   onOpenTransaction: (item: TransactionItem) => void;
 };
 
 export function HomeScreen({ onNavigate, onOpenTransaction }: Props) {
+  const [assets, setAssets] = useState<Asset[]>([]);
+  const [assetsLoading, setAssetsLoading] = useState(true);
+  const [assetsError, setAssetsError] = useState('');
+
+  const [summary, setSummary] = useState<InitialSummary | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(true);
+
+  const [receivables, setReceivables] = useState<Receivable[]>([]);
+  const [payables, setPayables] = useState<Payable[]>([]);
+
+  const loadAssets = async () => {
+    try {
+      setAssetsLoading(true);
+      setAssetsError('');
+
+      const data = await getAssets();
+      setAssets(data);
+    } catch (error: any) {
+      setAssetsError(error.message || 'No fue posible cargar los activos');
+    } finally {
+      setAssetsLoading(false);
+    }
+  };
+
+  const loadDashboardData = async () => {
+    try {
+      setSummaryLoading(true);
+
+      const [summaryData, receivablesData, payablesData] = await Promise.all([
+        getInitialSummary(),
+        getReceivables(),
+        getPayables(),
+      ]);
+
+      setSummary(summaryData);
+      setReceivables(receivablesData);
+      setPayables(payablesData);
+    } catch (error) {
+      console.error('Error dashboard:', error);
+    } finally {
+      setSummaryLoading(false);
+    }
+  };
+
+ useFocusEffect(
+  useCallback(() => {
+    loadAssets();
+    loadDashboardData();
+  }, [])
+);
+
   return (
     <Screen>
       <View style={styles.shell}>
         <HeaderBlock
-          eyebrow="Overview"
-          title="Hola Diego, abril viene bajo control"
-          body="Tus gastos variables bajaron esta semana y ya cubriste 68% de tu meta de fondo de emergencia."
-        />
+  eyebrow="Resumen"
+  title={`Tu dinero ${summary?.loMioEs && summary.loMioEs > 0 ? 'va bien' : 'necesita atención'}`}
+  body={
+    summaryLoading
+      ? 'Analizando tus finanzas...'
+      : summary?.mensaje || 'Aquí verás recomendaciones sobre tu dinero.'
+  }
+/>
 
-        <HeroCard>
-          <Text style={styles.balanceLabel}>Net worth</Text>
-          <Text style={styles.balanceValue}>$28,420.45</Text>
-          <View style={[uiStyles.row, uiStyles.gap12]}>
-            <View style={styles.kpiBubble}>
-              <Text style={styles.kpiBubbleLabel}>Cash</Text>
-              <Text style={styles.kpiBubbleValue}>$8.4k</Text>
-            </View>
-            <View style={styles.kpiBubbleMuted}>
-              <Text style={styles.kpiBubbleLabel}>Invested</Text>
-              <Text style={styles.kpiBubbleValue}>$11.7k</Text>
-            </View>
-          </View>
-          <AppButton label="Agregar movimiento" onPress={() => onNavigate('add-transaction')} variant="ghost" />
-        </HeroCard>
+       <HeroCard>
+  <Text style={styles.balanceLabel}>Patrimonio neto</Text>
+  <Text style={styles.balanceValue}>
+    {summaryLoading ? 'Cargando...' : formatCurrency(summary?.loMioEs)}
+  </Text>
 
-        <View style={[uiStyles.row, uiStyles.gap12]}>
-          {insights.map((item, index) => (
-            <StatCard key={item.label} label={item.label} value={item.value} helper={item.delta} invert={index === 0} />
-          ))}
+  <View style={[uiStyles.row, uiStyles.gap12]}>
+    <View style={styles.kpiBubble}>
+      <Text style={styles.kpiBubbleLabel}>Tengo</Text>
+      <Text style={styles.kpiBubbleValue}>
+        {formatCurrency(summary?.tengo)}
+      </Text>
+    </View>
+
+    <View style={styles.kpiBubbleMuted}>
+      <Text style={styles.kpiBubbleLabel}>Debo</Text>
+      <Text style={styles.kpiBubbleValue}>
+        {formatCurrency(summary?.debo)}
+      </Text>
+    </View>
+  </View>
+
+  <AppButton
+    label="Agregar movimiento"
+    onPress={() => onNavigate('add-transaction')}
+    variant="ghost"
+  />
+</HeroCard>
+
+<View style={[uiStyles.row, uiStyles.gap12]}>
+  <StatCard
+    label="Activos"
+    value={formatCurrency(
+      assets.reduce((acc, item) => acc + Number(item.valorEstimado || 0), 0)
+    )}
+    helper={`${assets.length} registrados`}
+    invert
+  />
+  <StatCard
+    label="Por cobrar"
+    value={formatCurrency(
+      receivables.reduce((acc, item) => acc + Number(item.monto || 0), 0)
+    )}
+    helper={`${receivables.length} cuentas`}
+  />
+  <StatCard
+    label="Por pagar"
+    value={formatCurrency(
+      payables.reduce((acc, item) => acc + Number(item.monto || 0), 0)
+    )}
+    helper={`${payables.length} cuentas`}
+  />
+</View>
+
+<SectionHeader title="Mis activos" />
+
+<SurfaceCard>
+  {assetsLoading ? (
+    <Text style={styles.assetMessage}>Cargando activos...</Text>
+  ) : assetsError ? (
+    <Text style={styles.assetError}>{assetsError}</Text>
+  ) : assets.length === 0 ? (
+    <Text style={styles.assetMessage}>No tienes activos registrados</Text>
+  ) : (
+    assets.map((asset) => (
+      <View key={asset.id} style={styles.assetItem}>
+        <View style={styles.assetBody}>
+          <Text style={styles.assetTitle}>{asset.nombre}</Text>
+          <Text style={styles.assetSubtitle}>{asset.categoria}</Text>
         </View>
+        <Text style={styles.assetValue}>
+          {formatCurrency(asset.valorEstimado)}
+        </Text>
+      </View>
+    ))
+  )}
+</SurfaceCard>
 
         <SectionHeader title="Quick actions" />
         <View style={styles.quickGrid}>
-          <QuickAction title="Wallet" subtitle="Accounts & cash" onPress={() => onNavigate('wallet')} />
-          <QuickAction title="Goals" subtitle="3 active" onPress={() => onNavigate('goals')} />
-          <QuickAction title="Activity" subtitle="Latest payments" onPress={() => onNavigate('transactions')} />
-          <QuickAction title="Alerts" subtitle="4 new" onPress={() => onNavigate('notifications')} />
+          <QuickAction title="Finanzas" subtitle="Resumen y fuentes" onPress={() => onNavigate('finance')} />
+          <QuickAction title="Activos" subtitle={`${assets.length} registrados`} onPress={() => onNavigate('assets')} />
+          <QuickAction title="Por cobrar" subtitle={`${receivables.length} cuentas`} onPress={() => onNavigate('receivables')} />
+          <QuickAction title="Por pagar" subtitle={`${payables.length} cuentas`} onPress={() => onNavigate('payables')} />
+          <QuickAction title="Movimientos" subtitle="Historial y detalle" onPress={() => onNavigate('transactions')} />
+          <QuickAction title="Objetivos" subtitle="Metas financieras" onPress={() => onNavigate('goals')} />
         </View>
 
         <SectionHeader title="Recent activity" action="View all" />
@@ -59,7 +193,9 @@ export function HomeScreen({ onNavigate, onOpenTransaction }: Props) {
                 <Text style={styles.listTitle}>{item.title}</Text>
                 <Text style={styles.listSubtitle}>{item.subtitle}</Text>
               </View>
-              <Text style={[styles.amount, item.type === 'income' && styles.amountIncome]}>{item.amount}</Text>
+              <Text style={[styles.amount, item.type === 'income' && styles.amountIncome]}>
+                {item.amount}
+              </Text>
             </Pressable>
           ))}
         </View>
@@ -129,7 +265,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   quickAction: {
-    width: '47%',
+    width: '48%',
     backgroundColor: palette.surface,
     borderRadius: 24,
     borderWidth: 1,
@@ -199,5 +335,40 @@ const styles = StyleSheet.create({
   billDate: {
     color: palette.coral,
     fontWeight: '700',
+  },
+  assetMessage: {
+    color: palette.inkSoft,
+    fontSize: 14,
+  },
+  assetError: {
+    color: palette.danger,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  assetItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: palette.line,
+  },
+  assetBody: {
+    flex: 1,
+    gap: 4,
+  },
+  assetTitle: {
+    color: palette.ink,
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  assetSubtitle: {
+    color: palette.inkSoft,
+    fontSize: 13,
+  },
+  assetValue: {
+    color: palette.accent,
+    fontSize: 15,
+    fontWeight: '800',
   },
 });
