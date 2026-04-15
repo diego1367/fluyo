@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { Alert, StyleSheet, View, Text } from 'react-native';
 import { AppButton, HeaderBlock, InputField, Screen, SurfaceCard } from '../components/Ui';
 import { loginService } from '../services/authService';
-import { palette, spacing } from '../theme';
-import { login, register } from "../services/api";
+import { register } from "../services/api"; // 👈 Import arriba
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { palette, spacing } from '../theme';
 
+// ---------------------- TYPES ----------------------
 type SignInProps = {
   onSubmit: (token: string) => void;
   onBack: () => void;
+  onRegister: () => void;
 };
 
 type SignUpProps = {
@@ -16,7 +18,8 @@ type SignUpProps = {
   onBack: () => void;
 };
 
-export function SignInScreen({ onSubmit, onBack }: SignInProps) {
+// ---------------------- SIGN IN ----------------------
+export function SignInScreen({ onSubmit, onBack, onRegister }: SignInProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -29,21 +32,13 @@ export function SignInScreen({ onSubmit, onBack }: SignInProps) {
 
     try {
       setLoading(true);
+      const result = await loginService({ email: email.trim(), password: password.trim() });
 
-      const result = await loginService({
-        email: email.trim(),
-        password: password.trim(),
-      });
+      if (!result.accessToken) throw new Error('La API no devolvió token');
 
-      console.log('Login OK:', result);
-
-      if (!result.accessToken) {
-        throw new Error('La API no devolvió token');
-      }
-
+      await AsyncStorage.setItem("token", result.accessToken);
       onSubmit(result.accessToken);
     } catch (error: any) {
-      console.error('Error login:', error);
       Alert.alert('Error', error.message || 'No fue posible iniciar sesión');
     } finally {
       setLoading(false);
@@ -58,44 +53,42 @@ export function SignInScreen({ onSubmit, onBack }: SignInProps) {
           title="Entrá a tu centro financiero"
           body="Accedé a tus movimientos, presupuestos y metas desde una sola vista móvil."
         />
-
         <SurfaceCard>
-          <InputField
-            label="Email"
-            placeholder="hola@fluyo.app"
-            value={email}
-            onChangeText={setEmail}
-            autoCapitalize="none"
-            autoCorrect={false}
-            keyboardType="email-address"
-          />
-
-          <InputField
-            label="Contraseña"
-            placeholder="••••••••"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-
-          <AppButton
-            label={loading ? 'Ingresando...' : 'Ingresar'}
-            onPress={handleLogin}
-          />
-
+          <InputField label="Email" value={email} onChangeText={setEmail} keyboardType="email-address" />
+          <InputField label="Contraseña" value={password} onChangeText={setPassword} secureTextEntry />
+          <AppButton label={loading ? 'Ingresando...' : 'Ingresar'} onPress={handleLogin} />
           <AppButton label="Volver" onPress={onBack} variant="secondary" />
+          <AppButton label="Crear cuenta" onPress={onRegister} variant="secondary" />
         </SurfaceCard>
       </View>
     </Screen>
   );
 }
 
+// ---------------------- SIGN UP ----------------------
 export function SignUpScreen({ onSubmit, onBack }: SignUpProps) {
   const [nombre, setNombre] = useState('');
+  const [apellido, setApellido] = useState('');
   const [email, setEmail] = useState('');
+  const [celular, setCelular] = useState('');
   const [presupuesto, setPresupuesto] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+
+  const handleRegister = async () => {
+    if (password !== confirmPassword) {
+      Alert.alert("Validación", "Las contraseñas no coinciden");
+      return;
+    }
+
+    try {
+      const result = await register(nombre, apellido, email, celular, password);
+      console.log("Usuario creado:", result);
+      onSubmit();
+    } catch (error: any) {
+      Alert.alert("Error", error.message || "No fue posible crear la cuenta");
+    }
+  };
 
   return (
     <Screen>
@@ -106,55 +99,26 @@ export function SignUpScreen({ onSubmit, onBack }: SignUpProps) {
           body="Definí una cuenta principal, activá tus metas y arrancá con una estructura de control mensual."
         />
         <SurfaceCard>
-          <InputField
-            label="Nombre"
-            placeholder="Diego"
-            value={nombre}
-            onChangeText={setNombre}
-          />
-
-          <InputField
-            label="Email"
-            placeholder="hola@fluyo.app"
-            value={email}
-            onChangeText={setEmail}
-            autoCapitalize="none"
-            autoCorrect={false}
-            keyboardType="email-address"
-          />
-
-          <InputField
-            label="Presupuesto mensual"
-            placeholder="$2,500"
-            value={presupuesto}
-            onChangeText={setPresupuesto}
-            keyboardType="numeric"
-          />
-
-          <AppButton label="Continuar" onPress={onSubmit} />
+          <InputField label="Nombre" value={nombre} onChangeText={setNombre} />
+          <InputField label="Apellido" value={apellido} onChangeText={setApellido} />
+          <InputField label="Email" value={email} onChangeText={setEmail} keyboardType="email-address" />
+          <InputField label="Celular" value={celular} onChangeText={setCelular} keyboardType="phone-pad" />
+          <InputField label="Presupuesto mensual" value={presupuesto} onChangeText={setPresupuesto} keyboardType="numeric" />
+          <InputField label="Contraseña" value={password} onChangeText={setPassword} secureTextEntry />
+          <InputField label="Confirmar contraseña" placeholder="••••••••" value={confirmPassword} onChangeText={setConfirmPassword} secureTextEntry
+/>
+          <AppButton label="Continuar" onPress={handleRegister} />
           <AppButton label="Volver" onPress={onBack} variant="secondary" />
+          
         </SurfaceCard>
-
-        <Text style={styles.note}>
-          Incluye onboarding simple, foco en ahorro y resumen diario automático.
-        </Text>
+        <Text style={styles.note}>Incluye onboarding simple, foco en ahorro y resumen diario automático.</Text>
       </View>
     </Screen>
   );
 }
 
+// ---------------------- STYLES ----------------------
 const styles = StyleSheet.create({
-  shell: { gap: spacing.xl },
-  input: {
-    borderWidth: 1,
-    borderColor: palette.inkSoft,
-    padding: spacing.sm,
-    marginBottom: spacing.md,
-    borderRadius: 6,
-  },
-  note: {
-    color: palette.inkSoft,
-    textAlign: 'center',
-    lineHeight: 21,
-  },
+  shell: { flex: 1, padding: spacing.md, justifyContent: "center", gap: spacing.xl },
+  note: { color: palette.inkSoft, textAlign: 'center', lineHeight: 21 },
 });
